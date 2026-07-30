@@ -382,3 +382,68 @@ make -j"$(nproc)"
 ```bash
 make -j1 V=s
 ```
+
+
+## v19：MT798x 提示与逐文件 Artifact
+
+### MT798x 提示
+
+仅 `immortalwrt-mt798x` 显示，分为：
+
+```text
+MT7981 / AX3000
+MT7986（AX4200、AX6000、AX7800）
+MT7986 / 256M Low Memory
+```
+
+机型列表使用人工换行，保持终端可读性；不使用大量等号分隔。
+
+### Artifact 前缀
+
+在“检查并整理 `.config`”步骤中生成：
+
+```text
+ARTIFACT_PREFIX=配置基础名-运行号-Session号
+```
+
+读取 `006.immortalwrt.config` 时示例：
+
+```text
+006.immortalwrt-16-1
+```
+
+没有读取已有配置时使用：
+
+```text
+new-config-16-1
+```
+
+### 上传顺序
+
+```text
+配置 Artifact
+→ 可选 make
+→ 固件逐个上传
+→ build-info Artifact
+→ 恢复最终成功或失败状态
+```
+
+逐文件上传器：
+
+```text
+tools/artifact-uploader/upload-firmware.mjs
+```
+
+它扫描 `source/bin/targets/`，排除：
+
+```text
+packages/
+*.buildinfo
+*.manifest
+profiles.json
+sha256sums
+```
+
+剩余每个文件单独上传，并写入 `ARTIFACT_INDEX.txt`。
+
+构建失败时，存在的部分固件仍会尝试上传，随后 Job 最终保持失败状态。

@@ -1,4 +1,4 @@
-# 当前方案（v18）
+# 当前方案（v19）
 
 ## 目标
 
@@ -382,3 +382,24 @@ make -j"$(nproc)"
 - 忽略整个根目录 `config-private/`
 - 不影响正式的 `config/`
 - 不影响子目录中的 `.txt`
+
+
+## v19：MT798x 提示和逐个固件 Artifact
+
+连接提示按三类整理：
+
+```text
+MT7981
+MT7986
+MT7986 256M Low Memory
+```
+
+MT7986 合并 AX4200、AX6000 和 AX7800。
+
+Artifact 前缀使用：
+
+```text
+配置基础名-运行号-Session号
+```
+
+每个固件单独上传，小型构建资料和日志进入 `-build-info`。

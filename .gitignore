@@ -48,3 +48,6 @@ Desktop.ini
 
 # 本地私有配置
 /config-private/
+
+# 本地 Node.js 依赖
+/tools/artifact-uploader/node_modules/

@@ -308,3 +308,17 @@ make -j"$(nproc)"
 - `/config-private/` 只匹配根目录私有配置目录
 - 不要改成 `config/`
 - 不要写 Windows 反斜杠 `\config-private`
+
+
+## v19 接手重点
+
+1. MT798x 连接提示只分三类。
+2. 机型列表采用适度人工换行，保持美观。
+3. 不自动执行任何 `cp -f defconfig/... .config`。
+4. `.config` Artifact 必须继续位于 `make` 之前。
+5. `ARTIFACT_PREFIX` 来自实际解析的配置文件名，而不是源码名。
+6. 每个固件文件一个 Artifact。
+7. `packages/`、buildinfo、manifest、profiles.json 和 sha256sums 不作为固件。
+8. 资料和日志统一进入 `-build-info`。
+9. 动态上传失败后仍要上传 `ARTIFACT_INDEX.txt`，最后恢复 Job 失败状态。
+10. `@actions/artifact` 固定为 6.2.2，不要使用浮动版本。

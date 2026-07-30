@@ -1,0 +1,8 @@
+{
+  "name": "openwrt-firmware-artifact-uploader",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@actions/artifact": "6.2.2"
+  }
+}

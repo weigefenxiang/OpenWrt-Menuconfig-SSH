@@ -414,6 +414,53 @@ jobs:
             echo "初始配置：未读取已有配置"
           fi
           echo "登录后执行：screen -d -r 11"
+
+          if [[ "$SOURCE_NAME" == "immortalwrt-mt798x" ]]; then
+            echo
+            cat <<'EOF'
+          【MT7981 / AX3000】适用机型：
+            360 T7 108M、RAX3000M、XR30、小米 AX3000T、WR30U、
+            GL-MT2500、GL-MT3000、H3C NX30 Pro、JCG Q30、
+            RG-X30E / RG-X30E Pro、ASR3000、CT3003、
+            Nokia EA0326GMP、NRadio WT9103 等。
+
+          【MT7986】适用机型：
+            AX4200：Banana Pi BPI-R3 Mini
+            AX6000：GL-MT6000、京东云 RE-CP-03、RG-X60 Pro、
+                    TL-XDR6086、TL-XDR6088、红米 AX6000
+            AX7800：Zyxel EX5700
+
+          【MT7986 / 256M Low Memory】适用机型：
+            磊科 Netcore N60
+
+
+          MT798x 设备预设配置
+          EOF
+
+            if [[ -n "$CONFIG_FILE" ]]; then
+              echo
+              echo "警告：当前已加载已有配置，下面的 cp 命令会覆盖它。"
+            fi
+
+            cat <<'EOF'
+
+          【MT7981】
+          cp -f defconfig/mt7981-ax3000.config .config
+
+          【MT7986】
+          AX4200：cp -f defconfig/mt7986-ax4200.config .config
+          AX6000：cp -f defconfig/mt7986-ax6000.config .config
+          AX7800：cp -f defconfig/mt7986-ax7800.config .config
+
+          【MT7986 256M Low Memory】
+          cp -f defconfig/mt7986-ax6000-256m.config .config
+
+          使用预设：先退出当前 menuconfig（不保存），执行对应 cp，再执行 make menuconfig。
+          注意：cp 会覆盖当前 .config；已加载已有配置时通常不要执行。
+          EOF
+          fi
+
+          echo
           echo "保存 .config 后执行：sudo touch /continue"
           echo "完成标记每 5 秒检查一次；等待状态每 600 秒输出一次。"
           echo "============================================================"
@@ -456,6 +503,38 @@ jobs:
           echo "config_sha256=$FINAL_SHA256" >> SOURCE_INFO.txt
           echo "build_requested=$BUILD_FIRMWARE" >> SOURCE_INFO.txt
 
+          CONFIG_RESOLVED="$(awk -F= '$1 == "config_file" {value=$2} END {print value}' SOURCE_INFO.txt)"
+          if [[ -z "$CONFIG_RESOLVED" || "$CONFIG_RESOLVED" == "none" ]]; then
+            ARTIFACT_BASE="new-config"
+          else
+            ARTIFACT_BASE="${CONFIG_RESOLVED%.config}"
+          fi
+
+          ARTIFACT_BASE="$(python3 - "$ARTIFACT_BASE" <<'PY'
+          import re
+          import sys
+
+          value = sys.argv[1].strip()
+          value = re.sub(r'[\x00-\x1f\x7f/\\:"<>|*?]+', '-', value)
+          value = re.sub(r'\s+', '-', value)
+          value = re.sub(r'-{2,}', '-', value)
+          value = value.strip(' .-_')
+          if not value:
+              value = 'config'
+          value = value[:120].rstrip(' .-_') or 'config'
+          print(value)
+          PY
+          )"
+
+          ARTIFACT_PREFIX="${ARTIFACT_BASE}-${GITHUB_RUN_NUMBER}-${SESSION_ID}"
+          echo "ARTIFACT_PREFIX=$ARTIFACT_PREFIX" >> "$GITHUB_ENV"
+          {
+            echo "artifact_base=$ARTIFACT_BASE"
+            echo "artifact_prefix=$ARTIFACT_PREFIX"
+          } >> SOURCE_INFO.txt
+
+          echo "Artifact 前缀：$ARTIFACT_PREFIX"
+
           if [ -s loaded-original.config ]; then
             ORIGINAL_SHA256="$(sha256sum loaded-original.config | awk '{print $1}')"
             if [ "$FINAL_SHA256" = "$ORIGINAL_SHA256" ]; then
@@ -479,7 +558,7 @@ jobs:
       - name: 上传 .config
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ needs.prepare.outputs.source_name }}-${{ needs.prepare.outputs.branch }}-config-${{ github.run_number }}-${{ matrix.session }}
+          name: ${{ env.ARTIFACT_PREFIX }}-config
           path: |
             source/.config
             source/menuconfig-session-${{ matrix.session }}.config
@@ -582,30 +661,73 @@ jobs:
           echo "固件编译完成。"
           find bin/targets -maxdepth 4 -type f -printf '%p  %s bytes\n' 2>/dev/null | sort || true
 
-      - name: 上传固件和编译日志
+      - name: 安装逐文件上传器依赖
+        id: uploader_deps
+        if: ${{ always() && inputs.build_firmware == true }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd "$GITHUB_WORKSPACE/tools/artifact-uploader"
+          npm install --omit=dev --no-audit --no-fund --ignore-scripts --no-package-lock
+
+      - name: 逐个上传固件
+        id: firmware_upload
+        if: ${{ always() && inputs.build_firmware == true }}
+        continue-on-error: true
+        shell: bash
+        env:
+          ARTIFACT_PREFIX: ${{ env.ARTIFACT_PREFIX }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          SOURCE_DIR: ${{ github.workspace }}/source
+          RETENTION_DAYS: "30"
+        run: |
+          node "$GITHUB_WORKSPACE/tools/artifact-uploader/upload-firmware.mjs"
+
+      - name: 上传 build-info
         if: ${{ always() && inputs.build_firmware == true }}
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ needs.prepare.outputs.source_name }}-${{ needs.prepare.outputs.branch }}-build-${{ github.run_number }}-${{ matrix.session }}
+          name: ${{ env.ARTIFACT_PREFIX }}-build-info
           path: |
-            source/bin/targets/**
+            source/ARTIFACT_INDEX.txt
             source/BUILD_INFO.txt
             source/build.log
             source/build-verbose.log
             source/.config
+            source/menuconfig-session-${{ matrix.session }}.config
             source/SOURCE_INFO.txt
+            source/bin/targets/**/*.buildinfo
+            source/bin/targets/**/*.manifest
+            source/bin/targets/**/profiles.json
+            source/bin/targets/**/sha256sums
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 30
           compression-level: 6
 
-      - name: 检查编译结果
+      - name: 检查编译和上传结果
         if: ${{ always() && inputs.build_firmware == true }}
         shell: bash
         run: |
+          FAILED=false
+
           if [[ "${{ steps.build.outcome }}" != "success" ]]; then
-            echo "::error::固件编译未成功。请下载 build Artifact 中的 BUILD_INFO.txt、build.log 和 build-verbose.log。"
+            echo "::error::固件编译未成功。请下载 $ARTIFACT_PREFIX-build-info 查看日志。"
+            FAILED=true
+          fi
+
+          if [[ "${{ steps.uploader_deps.outcome }}" != "success" ]]; then
+            echo "::error::逐文件上传器依赖安装失败。"
+            FAILED=true
+          fi
+
+          if [[ "${{ steps.firmware_upload.outcome }}" != "success" ]]; then
+            echo "::error::至少一个固件 Artifact 上传失败，请查看 ARTIFACT_INDEX.txt。"
+            FAILED=true
+          fi
+
+          if [[ "$FAILED" == "true" ]]; then
             exit 1
           fi
 
-          echo "固件编译和 Artifact 上传均已完成。"
+          echo "固件已逐个上传，资料和日志已上传到：$ARTIFACT_PREFIX-build-info"

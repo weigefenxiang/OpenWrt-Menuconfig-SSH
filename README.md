@@ -257,3 +257,77 @@ make -j"$(nproc)"
 ```bash
 make -j1 V=s
 ```
+
+
+## MT798x 连接提示
+
+选择：
+
+```text
+ImmortalWrt MT798x (hanwckf) / openwrt-21.02
+```
+
+时，连接说明会按三类显示适用机型：
+
+```text
+MT7981 / AX3000
+MT7986
+MT7986 / 256M Low Memory
+```
+
+设备预设配置也只按这三类整理；其中 MT7986 类包含 AX4200、AX6000 和 AX7800。提示仅提供命令，不会自动覆盖 `.config`。
+
+## 固件逐个上传
+
+配置完成后，Artifact 前缀按以下格式生成：
+
+```text
+配置文件名（去掉末尾 .config）-运行号-Session号
+```
+
+例如读取：
+
+```text
+006.immortalwrt.config
+```
+
+在第 16 次运行、Session 1 中生成：
+
+```text
+006.immortalwrt-16-1
+```
+
+配置先上传为：
+
+```text
+006.immortalwrt-16-1-config
+```
+
+编译完成后，`bin/targets/` 中除构建资料外的每个固件文件都会成为一个独立 Artifact：
+
+```text
+006.immortalwrt-16-1-原始固件文件名
+```
+
+以下内容合并到：
+
+```text
+006.immortalwrt-16-1-build-info
+```
+
+包含：
+
+```text
+ARTIFACT_INDEX.txt
+BUILD_INFO.txt
+SOURCE_INFO.txt
+build.log
+build-verbose.log
+.config
+*.buildinfo
+*.manifest
+profiles.json
+sha256sums
+```
+
+`packages/` 不会作为固件上传。每个固件 Artifact 内只包含一个原始文件。

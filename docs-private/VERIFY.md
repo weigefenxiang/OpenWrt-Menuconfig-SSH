@@ -1,4 +1,4 @@
-# v18 验收清单
+# v19 验收清单
 
 ## 静态检查
 
@@ -210,3 +210,24 @@
 - [x] `docs/test.txt` 不被忽略
 - [x] Workflow 文件未修改
 - [x] Screen、源码、配置读取和编译逻辑未修改
+
+
+## v19 验收
+
+- [x] MT798x 机型提示位于预设命令之前
+- [x] MT7986 合并 AX4200、AX6000、AX7800
+- [x] 低内存预设独立显示
+- [x] 机型列表保持适度人工换行
+- [x] 仅 hanwckf 源显示 MT798x 提示
+- [x] 不自动执行 defconfig 复制命令
+- [x] Artifact 前缀包含配置基础名、运行号、Session
+- [x] `.config` 先上传再编译
+- [x] 固件逐个成为独立 Artifact
+- [x] `packages/` 和构建资料不作为固件上传
+- [x] build-info 包含索引、日志和构建资料
+- [x] 索引记录大小与 SHA256
+- [x] 动态上传失败后最终 Job 失败
+- [x] YAML 和 Node.js 语法通过
+- [x] 模拟固件扫描和命名通过
+- [ ] 真实 Actions：逐个 Artifact 上传成功
+- [ ] 真实 Actions：下载项名称与配置对应

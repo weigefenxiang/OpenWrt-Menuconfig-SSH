@@ -1,0 +1,476 @@
+warning: in the working copy of '.github/workflows/menuconfig-ssh.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs-private/AI_HANDOFF.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs-private/BUG_HISTORY.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs-private/CURRENT_PLAN.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs-private/VERIFY.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/WORKFLOW.md', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.github/workflows/menuconfig-ssh.yml b/.github/workflows/menuconfig-ssh.yml[m
+[1mindex a80f13a..3b9c330 100644[m
+[1m--- a/.github/workflows/menuconfig-ssh.yml[m
+[1m+++ b/.github/workflows/menuconfig-ssh.yml[m
+[36m@@ -414,6 +414,53 @@[m [mjobs:[m
+             echo "初始配置：未读取已有配置"[m
+           fi[m
+           echo "登录后执行：screen -d -r 11"[m
+[32m+[m
+[32m+[m[32m          if [[ "$SOURCE_NAME" == "immortalwrt-mt798x" ]]; then[m
+[32m+[m[32m            echo[m
+[32m+[m[32m            cat <<'EOF'[m
+[32m+[m[32m          【MT7981 / AX3000】适用机型：[m
+[32m+[m[32m            360 T7 108M、RAX3000M、XR30、小米 AX3000T、WR30U、[m
+[32m+[m[32m            GL-MT2500、GL-MT3000、H3C NX30 Pro、JCG Q30、[m
+[32m+[m[32m            RG-X30E / RG-X30E Pro、ASR3000、CT3003、[m
+[32m+[m[32m            Nokia EA0326GMP、NRadio WT9103 等。[m
+[32m+[m
+[32m+[m[32m          【MT7986】适用机型：[m
+[32m+[m[32m            AX4200：Banana Pi BPI-R3 Mini[m
+[32m+[m[32m            AX6000：GL-MT6000、京东云 RE-CP-03、RG-X60 Pro、[m
+[32m+[m[32m                    TL-XDR6086、TL-XDR6088、红米 AX6000[m
+[32m+[m[32m            AX7800：Zyxel EX5700[m
+[32m+[m
+[32m+[m[32m          【MT7986 / 256M Low Memory】适用机型：[m
+[32m+[m[32m            磊科 Netcore N60[m
+[32m+[m
+[32m+[m
+[32m+[m[32m          MT798x 设备预设配置[m
+[32m+[m[32m          EOF[m
+[32m+[m
+[32m+[m[32m            if [[ -n "$CONFIG_FILE" ]]; then[m
+[32m+[m[32m              echo[m
+[32m+[m[32m              echo "警告：当前已加载已有配置，下面的 cp 命令会覆盖它。"[m
+[32m+[m[32m            fi[m
+[32m+[m
+[32m+[m[32m            cat <<'EOF'[m
+[32m+[m
+[32m+[m[32m          【MT7981】[m
+[32m+[m[32m          cp -f defconfig/mt7981-ax3000.config .config[m
+[32m+[m
+[32m+[m[32m          【MT7986】[m
+[32m+[m[32m          AX4200：cp -f defconfig/mt7986-ax4200.config .config[m
+[32m+[m[32m          AX6000：cp -f defconfig/mt7986-ax6000.config .config[m
+[32m+[m[32m          AX7800：cp -f defconfig/mt7986-ax7800.config .config[m
+[32m+[m
+[32m+[m[32m          【MT7986 256M Low Memory】[m
+[32m+[m[32m          cp -f defconfig/mt7986-ax6000-256m.config .config[m
+[32m+[m
+[32m+[m[32m          使用预设：先退出当前 menuconfig（不保存），执行对应 cp，再执行 make menuconfig。[m
+[32m+[m[32m          注意：cp 会覆盖当前 .config；已加载已有配置时通常不要执行。[m
+[32m+[m[32m          EOF[m
+[32m+[m[32m          fi[m
+[32m+[m
+[32m+[m[32m          echo[m
+           echo "保存 .config 后执行：sudo touch /continue"[m
+           echo "完成标记每 5 秒检查一次；等待状态每 600 秒输出一次。"[m
+           echo "============================================================"[m
+[36m@@ -456,6 +503,38 @@[m [mjobs:[m
+           echo "config_sha256=$FINAL_SHA256" >> SOURCE_INFO.txt[m
+           echo "build_requested=$BUILD_FIRMWARE" >> SOURCE_INFO.txt[m
+ [m
+[32m+[m[32m          CONFIG_RESOLVED="$(awk -F= '$1 == "config_file" {value=$2} END {print value}' SOURCE_INFO.txt)"[m
+[32m+[m[32m          if [[ -z "$CONFIG_RESOLVED" || "$CONFIG_RESOLVED" == "none" ]]; then[m
+[32m+[m[32m            ARTIFACT_BASE="new-config"[m
+[32m+[m[32m          else[m
+[32m+[m[32m            ARTIFACT_BASE="${CONFIG_RESOLVED%.config}"[m
+[32m+[m[32m          fi[m
+[32m+[m
+[32m+[m[32m          ARTIFACT_BASE="$(python3 - "$ARTIFACT_BASE" <<'PY'[m
+[32m+[m[32m          import re[m
+[32m+[m[32m          import sys[m
+[32m+[m
+[32m+[m[32m          value = sys.argv[1].strip()[m
+[32m+[m[32m          value = re.sub(r'[\x00-\x1f\x7f/\\:"<>|*?]+', '-', value)[m
+[32m+[m[32m          value = re.sub(r'\s+', '-', value)[m
+[32m+[m[32m          value = re.sub(r'-{2,}', '-', value)[m
+[32m+[m[32m          value = value.strip(' .-_')[m
+[32m+[m[32m          if not value:[m
+[32m+[m[32m              value = 'config'[m
+[32m+[m[32m          value = value[:120].rstrip(' .-_') or 'config'[m
+[32m+[m[32m          print(value)[m
+[32m+[m[32m          PY[m
+[32m+[m[32m          )"[m
+[32m+[m
+[32m+[m[32m          ARTIFACT_PREFIX="${ARTIFACT_BASE}-${GITHUB_RUN_NUMBER}-${SESSION_ID}"[m
+[32m+[m[32m          echo "ARTIFACT_PREFIX=$ARTIFACT_PREFIX" >> "$GITHUB_ENV"[m
+[32m+[m[32m          {[m
+[32m+[m[32m            echo "artifact_base=$ARTIFACT_BASE"[m
+[32m+[m[32m            echo "artifact_prefix=$ARTIFACT_PREFIX"[m
+[32m+[m[32m          } >> SOURCE_INFO.txt[m
+[32m+[m
+[32m+[m[32m          echo "Artifact 前缀：$ARTIFACT_PREFIX"[m
+[32m+[m
+           if [ -s loaded-original.config ]; then[m
+             ORIGINAL_SHA256="$(sha256sum loaded-original.config | awk '{print $1}')"[m
+             if [ "$FINAL_SHA256" = "$ORIGINAL_SHA256" ]; then[m
+[36m@@ -479,7 +558,7 @@[m [mjobs:[m
+       - name: 上传 .config[m
+         uses: actions/upload-artifact@v7[m
+         with:[m
+[31m-          name: ${{ needs.prepare.outputs.source_name }}-${{ needs.prepare.outputs.branch }}-config-${{ github.run_number }}-${{ matrix.session }}[m
+[32m+[m[32m          name: ${{ env.ARTIFACT_PREFIX }}-config[m
+           path: |[m
+             source/.config[m
+             source/menuconfig-session-${{ matrix.session }}.config[m
+[36m@@ -582,30 +661,73 @@[m [mjobs:[m
+           echo "固件编译完成。"[m
+           find bin/targets -maxdepth 4 -type f -printf '%p  %s bytes\n' 2>/dev/null | sort || true[m
+ [m
+[31m-      - name: 上传固件和编译日志[m
+[32m+[m[32m      - name: 安装逐文件上传器依赖[m
+[32m+[m[32m        id: uploader_deps[m
+[32m+[m[32m        if: ${{ always() && inputs.build_firmware == true }}[m
+[32m+[m[32m        continue-on-error: true[m
+[32m+[m[32m        shell: bash[m
+[32m+[m[32m        run: |[m
+[32m+[m[32m          cd "$GITHUB_WORKSPACE/tools/artifact-uploader"[m
+[32m+[m[32m          npm install --omit=dev --no-audit --no-fund --ignore-scripts --no-package-lock[m
+[32m+[m
+[32m+[m[32m      - name: 逐个上传固件[m
+[32m+[m[32m        id: firmware_upload[m
+[32m+[m[32m        if: ${{ always() && inputs.build_firmware == true }}[m
+[32m+[m[32m        continue-on-error: true[m
+[32m+[m[32m        shell: bash[m
+[32m+[m[32m        env:[m
+[32m+[m[32m          ARTIFACT_PREFIX: ${{ env.ARTIFACT_PREFIX }}[m
+[32m+[m[32m          BUILD_OUTCOME: ${{ steps.build.outcome }}[m
+[32m+[m[32m          SOURCE_DIR: ${{ github.workspace }}/source[m
+[32m+[m[32m          RETENTION_DAYS: "30"[m
+[32m+[m[32m        run: |[m
+[32m+[m[32m          node "$GITHUB_WORKSPACE/tools/artifact-uploader/upload-firmware.mjs"[m
+[32m+[m
+[32m+[m[32m      - name: 上传 build-info[m
+         if: ${{ always() && inputs.build_firmware == true }}[m
+         uses: actions/upload-artifact@v7[m
+         with:[m
+[31m-          name: ${{ needs.prepare.outputs.source_name }}-${{ needs.prepare.outputs.branch }}-build-${{ github.run_number }}-${{ matrix.session }}[m
+[32m+[m[32m          name: ${{ env.ARTIFACT_PREFIX }}-build-info[m
+           path: |[m
+[31m-            source/bin/targets/**[m
+[32m+[m[32m            source/ARTIFACT_INDEX.txt[m
+             source/BUILD_INFO.txt[m
+             source/build.log[m
+             source/build-verbose.log[m
+             source/.config[m
+[32m+[m[32m            source/menuconfig-session-${{ matrix.session }}.config[m
+             source/SOURCE_INFO.txt[m
+[32m+[m[32m            source/bin/targets/**/*.buildinfo[m
+[32m+[m[32m            source/bin/targets/**/*.manifest[m
+[32m+[m[32m            source/bin/targets/**/profiles.json[m
+[32m+[m[32m            source/bin/targets/**/sha256sums[m
+           include-hidden-files: true[m
+           if-no-files-found: warn[m
+           retention-days: 30[m
+           compression-level: 6[m
+ [m
+[31m-      - name: 检查编译结果[m
+[32m+[m[32m      - name: 检查编译和上传结果[m
+         if: ${{ always() && inputs.build_firmware == true }}[m
+         shell: bash[m
+         run: |[m
+[32m+[m[32m          FAILED=false[m
+[32m+[m
+           if [[ "${{ steps.build.outcome }}" != "success" ]]; then[m
+[31m-            echo "::error::固件编译未成功。请下载 build Artifact 中的 BUILD_INFO.txt、build.log 和 build-verbose.log。"[m
+[32m+[m[32m            echo "::error::固件编译未成功。请下载 $ARTIFACT_PREFIX-build-info 查看日志。"[m
+[32m+[m[32m            FAILED=true[m
+[32m+[m[32m          fi[m
+[32m+[m
+[32m+[m[32m          if [[ "${{ steps.uploader_deps.outcome }}" != "success" ]]; then[m
+[32m+[m[32m            echo "::error::逐文件上传器依赖安装失败。"[m
+[32m+[m[32m            FAILED=true[m
+[32m+[m[32m          fi[m
+[32m+[m
+[32m+[m[32m          if [[ "${{ steps.firmware_upload.outcome }}" != "success" ]]; then[m
+[32m+[m[32m            echo "::error::至少一个固件 Artifact 上传失败，请查看 ARTIFACT_INDEX.txt。"[m
+[32m+[m[32m            FAILED=true[m
+[32m+[m[32m          fi[m
+[32m+[m
+[32m+[m[32m          if [[ "$FAILED" == "true" ]]; then[m
+             exit 1[m
+           fi[m
+ [m
+[31m-          echo "固件编译和 Artifact 上传均已完成。"[m
+[32m+[m[32m          echo "固件已逐个上传，资料和日志已上传到：$ARTIFACT_PREFIX-build-info"[m
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 831becf..83b5d04 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -48,3 +48,6 @@[m [mDesktop.ini[m
+ [m
+ # 本地私有配置[m
+ /config-private/[m
+[32m+[m
+[32m+[m[32m# 本地 Node.js 依赖[m
+[32m+[m[32m/tools/artifact-uploader/node_modules/[m
+[1mdiff --git a/README.md b/README.md[m
+[1mindex d47e5b4..1c6be22 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -257,3 +257,77 @@[m [mmake -j"$(nproc)"[m
+ ```bash[m
+ make -j1 V=s[m
+ ```[m
+[32m+[m
+[32m+[m
+[32m+[m[32m## MT798x 连接提示[m
+[32m+[m
+[32m+[m[32m选择：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mImmortalWrt MT798x (hanwckf) / openwrt-21.02[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m时，连接说明会按三类显示适用机型：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mMT7981 / AX3000[m
+[32m+[m[32mMT7986[m
+[32m+[m[32mMT7986 / 256M Low Memory[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m设备预设配置也只按这三类整理；其中 MT7986 类包含 AX4200、AX6000 和 AX7800。提示仅提供命令，不会自动覆盖 `.config`。[m
+[32m+[m
+[32m+[m[32m## 固件逐个上传[m
+[32m+[m
+[32m+[m[32m配置完成后，Artifact 前缀按以下格式生成：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m配置文件名（去掉末尾 .config）-运行号-Session号[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m例如读取：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m006.immortalwrt.config[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m在第 16 次运行、Session 1 中生成：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m006.immortalwrt-16-1[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m配置先上传为：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m006.immortalwrt-16-1-config[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m编译完成后，`bin/targets/` 中除构建资料外的每个固件文件都会成为一个独立 Artifact：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m006.immortalwrt-16-1-原始固件文件名[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m以下内容合并到：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m006.immortalwrt-16-1-build-info[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m包含：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mARTIFACT_INDEX.txt[m
+[32m+[m[32mBUILD_INFO.txt[m
+[32m+[m[32mSOURCE_INFO.txt[m
+[32m+[m[32mbuild.log[m
+[32m+[m[32mbuild-verbose.log[m
+[32m+[m[32m.config[m
+[32m+[m[32m*.buildinfo[m
+[32m+[m[32m*.manifest[m
+[32m+[m[32mprofiles.json[m
+[32m+[m[32msha256sums[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m`packages/` 不会作为固件上传。每个固件 Artifact 内只包含一个原始文件。[m
+[1mdiff --git a/docs-private/AI_HANDOFF.md b/docs-private/AI_HANDOFF.md[m
+[1mindex 31cc503..934fc7b 100644[m
+[1m--- a/docs-private/AI_HANDOFF.md[m
+[1m+++ b/docs-private/AI_HANDOFF.md[m
+[36m@@ -308,3 +308,17 @@[m [mmake -j"$(nproc)"[m
+ - `/config-private/` 只匹配根目录私有配置目录[m
+ - 不要改成 `config/`[m
+ - 不要写 Windows 反斜杠 `\config-private`[m
+[32m+[m
+[32m+[m
+[32m+[m[32m## v19 接手重点[m
+[32m+[m
+[32m+[m[32m1. MT798x 连接提示只分三类。[m
+[32m+[m[32m2. 机型列表采用适度人工换行，保持美观。[m
+[32m+[m[32m3. 不自动执行任何 `cp -f defconfig/... .config`。[m
+[32m+[m[32m4. `.config` Artifact 必须继续位于 `make` 之前。[m
+[32m+[m[32m5. `ARTIFACT_PREFIX` 来自实际解析的配置文件名，而不是源码名。[m
+[32m+[m[32m6. 每个固件文件一个 Artifact。[m
+[32m+[m[32m7. `packages/`、buildinfo、manifest、profiles.json 和 sha256sums 不作为固件。[m
+[32m+[m[32m8. 资料和日志统一进入 `-build-info`。[m
+[32m+[m[32m9. 动态上传失败后仍要上传 `ARTIFACT_INDEX.txt`，最后恢复 Job 失败状态。[m
+[32m+[m[32m10. `@actions/artifact` 固定为 6.2.2，不要使用浮动版本。[m
+[1mdiff --git a/docs-private/BUG_HISTORY.md b/docs-private/BUG_HISTORY.md[m
+[1mindex 7ffe31f..83d8f57 100644[m
+[1m--- a/docs-private/BUG_HISTORY.md[m
+[1m+++ b/docs-private/BUG_HISTORY.md[m
+[36m@@ -296,3 +296,19 @@[m [mv16 新增 `run-name`，显示配置输入名、源码/分支和编译状态，[m
+ v17 新增 `openwrt-21.02`，并通过指定 Git 克隆目标目录，把其上游示例目录统一为项目标准的 `source`。[m
+ [m
+ 同时将全部源码的并行编译从 `nproc + 1` 改为 `make -j$(nproc)`。[m
+[32m+[m
+[32m+[m
+[32m+[m[32m## v18：固件全部放在一个大 Artifact[m
+[32m+[m
+[32m+[m[32m### 现象[m
+[32m+[m
+[32m+[m[32m只需要其中一个镜像时，仍要下载包含所有固件和资料的大包。[m
+[32m+[m
+[32m+[m[32m### v19 处理[m
+[32m+[m
+[32m+[m[32m- 每个固件文件独立上传[m
+[32m+[m[32m- 名称带配置基础名、运行号和 Session[m
+[32m+[m[32m- 构建资料和日志合并为 `build-info`[m
+[32m+[m[32m- 生成 `ARTIFACT_INDEX.txt` 记录文件名、大小、SHA256 和上传状态[m
+[32m+[m
+[32m+[m[32m同时精简 MT798x 连接提示，按 MT7981、MT7986、MT7986 256M Low Memory 三类显示。[m
+[1mdiff --git a/docs-private/CURRENT_PLAN.md b/docs-private/CURRENT_PLAN.md[m
+[1mindex 3eebbb9..8b4abab 100644[m
+[1m--- a/docs-private/CURRENT_PLAN.md[m
+[1m+++ b/docs-private/CURRENT_PLAN.md[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-# 当前方案（v18）[m
+[32m+[m[32m# 当前方案（v19）[m
+ [m
+ ## 目标[m
+ [m
+[36m@@ -382,3 +382,24 @@[m [mmake -j"$(nproc)"[m
+ - 忽略整个根目录 `config-private/`[m
+ - 不影响正式的 `config/`[m
+ - 不影响子目录中的 `.txt`[m
+[32m+[m
+[32m+[m
+[32m+[m[32m## v19：MT798x 提示和逐个固件 Artifact[m
+[32m+[m
+[32m+[m[32m连接提示按三类整理：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mMT7981[m
+[32m+[m[32mMT7986[m
+[32m+[m[32mMT7986 256M Low Memory[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mMT7986 合并 AX4200、AX6000 和 AX7800。[m
+[32m+[m
+[32m+[m[32mArtifact 前缀使用：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m配置基础名-运行号-Session号[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m每个固件单独上传，小型构建资料和日志进入 `-build-info`。[m
+[1mdiff --git a/docs-private/VERIFY.md b/docs-private/VERIFY.md[m
+[1mindex 91e698c..f47052d 100644[m
+[1m--- a/docs-private/VERIFY.md[m
+[1m+++ b/docs-private/VERIFY.md[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-# v18 验收清单[m
+[32m+[m[32m# v19 验收清单[m
+ [m
+ ## 静态检查[m
+ [m
+[36m@@ -210,3 +210,24 @@[m
+ - [x] `docs/test.txt` 不被忽略[m
+ - [x] Workflow 文件未修改[m
+ - [x] Screen、源码、配置读取和编译逻辑未修改[m
+[32m+[m
+[32m+[m
+[32m+[m[32m## v19 验收[m
+[32m+[m
+[32m+[m[32m- [x] MT798x 机型提示位于预设命令之前[m
+[32m+[m[32m- [x] MT7986 合并 AX4200、AX6000、AX7800[m
+[32m+[m[32m- [x] 低内存预设独立显示[m
+[32m+[m[32m- [x] 机型列表保持适度人工换行[m
+[32m+[m[32m- [x] 仅 hanwckf 源显示 MT798x 提示[m
+[32m+[m[32m- [x] 不自动执行 defconfig 复制命令[m
+[32m+[m[32m- [x] Artifact 前缀包含配置基础名、运行号、Session[m
+[32m+[m[32m- [x] `.config` 先上传再编译[m
+[32m+[m[32m- [x] 固件逐个成为独立 Artifact[m
+[32m+[m[32m- [x] `packages/` 和构建资料不作为固件上传[m
+[32m+[m[32m- [x] build-info 包含索引、日志和构建资料[m
+[32m+[m[32m- [x] 索引记录大小与 SHA256[m
+[32m+[m[32m- [x] 动态上传失败后最终 Job 失败[m
+[32m+[m[32m- [x] YAML 和 Node.js 语法通过[m
+[32m+[m[32m- [x] 模拟固件扫描和命名通过[m
+[32m+[m[32m- [ ] 真实 Actions：逐个 Artifact 上传成功[m
+[32m+[m[32m- [ ] 真实 Actions：下载项名称与配置对应[m
+[1mdiff --git a/docs/WORKFLOW.md b/docs/WORKFLOW.md[m
+[1mindex 89620f0..c6c6e5f 100644[m
+[1m--- a/docs/WORKFLOW.md[m
+[1m+++ b/docs/WORKFLOW.md[m
+[36m@@ -382,3 +382,68 @@[m [mmake -j"$(nproc)"[m
+ ```bash[m
+ make -j1 V=s[m
+ ```[m
+[32m+[m
+[32m+[m
+[32m+[m[32m## v19：MT798x 提示与逐文件 Artifact[m
+[32m+[m
+[32m+[m[32m### MT798x 提示[m
+[32m+[m
+[32m+[m[32m仅 `immortalwrt-mt798x` 显示，分为：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mMT7981 / AX3000[m
+[32m+[m[32mMT7986（AX4200、AX6000、AX7800）[m
+[32m+[m[32mMT7986 / 256M Low Memory[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m机型列表使用人工换行，保持终端可读性；不使用大量等号分隔。[m
+[32m+[m
+[32m+[m[32m### Artifact 前缀[m
+[32m+[m
+[32m+[m[32m在“检查并整理 `.config`”步骤中生成：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mARTIFACT_PREFIX=配置基础名-运行号-Session号[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m读取 `006.immortalwrt.config` 时示例：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m006.immortalwrt-16-1[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m没有读取已有配置时使用：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mnew-config-16-1[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### 上传顺序[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32m配置 Artifact[m
+[32m+[m[32m→ 可选 make[m
+[32m+[m[32m→ 固件逐个上传[m
+[32m+[m[32m→ build-info Artifact[m
+[32m+[m[32m→ 恢复最终成功或失败状态[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m逐文件上传器：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mtools/artifact-uploader/upload-firmware.mjs[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m它扫描 `source/bin/targets/`，排除：[m
+[32m+[m
+[32m+[m[32m```text[m
+[32m+[m[32mpackages/[m
+[32m+[m[32m*.buildinfo[m
+[32m+[m[32m*.manifest[m
+[32m+[m[32mprofiles.json[m
+[32m+[m[32msha256sums[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m剩余每个文件单独上传，并写入 `ARTIFACT_INDEX.txt`。[m
+[32m+[m
+[32m+[m[32m构建失败时，存在的部分固件仍会尝试上传，随后 Job 最终保持失败状态。[m
