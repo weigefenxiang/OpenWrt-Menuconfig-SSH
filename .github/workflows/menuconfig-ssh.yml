@@ -1,0 +1,611 @@
+name: OpenWrt Menuconfig SSH / 多源码配置
+
+run-name: "${{ inputs.config_file || '新建配置' }}｜${{ inputs.source_branch }}｜${{ inputs.build_firmware && '编译固件' || '仅保存配置' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: "源码 / 分支"
+        required: true
+        default: "ImmortalWrt / master"
+        type: choice
+        options:
+          - "ImmortalWrt / master"
+          - "ImmortalWrt / openwrt-25.12"
+          - "ImmortalWrt / openwrt-24.10"
+          - "ImmortalWrt / openwrt-23.05"
+          - "ImmortalWrt / openwrt-21.02"
+          - "ImmortalWrt / openwrt-18.06-k5.4"
+          - "ImmortalWrt / openwrt-18.06"
+          - "ImmortalWrt MT798x (hanwckf) / openwrt-21.02"
+          - "OpenWrt / main"
+          - "OpenWrt / master"
+          - "OpenWrt / openwrt-25.12"
+          - "OpenWrt / openwrt-24.10"
+          - "OpenWrt / openwrt-23.05"
+          - "OpenWrt / openwrt-22.03"
+          - "OpenWrt / openwrt-21.02"
+          - "OpenWrt / openwrt-19.07"
+          - "OpenWrt / openwrt-18.06"
+          - "OpenWrt / lede-17.01"
+          - "LEDE / master"
+
+      config_file:
+        description: "已有配置文件：留空表示不读取；填写 config 目录中的文件名"
+        required: false
+        default: ""
+        type: string
+
+      build_firmware:
+        description: "保存并上传 .config 后编译固件"
+        required: true
+        default: true
+        type: boolean
+
+      sessions:
+        description: "SSH 后台数量（默认 4，最高 16）"
+        required: true
+        default: "4"
+        type: choice
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+          - "6"
+          - "7"
+          - "8"
+          - "9"
+          - "10"
+          - "11"
+          - "12"
+          - "13"
+          - "14"
+          - "15"
+          - "16"
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: 解析选项
+    runs-on: ubuntu-22.04
+    outputs:
+      source_name: ${{ steps.resolve.outputs.source_name }}
+      repository: ${{ steps.resolve.outputs.repository }}
+      branch: ${{ steps.resolve.outputs.branch }}
+      clone_mode: ${{ steps.resolve.outputs.clone_mode }}
+      matrix: ${{ steps.resolve.outputs.matrix }}
+
+    steps:
+      - name: 解析源码、分支和后台数量
+        id: resolve
+        shell: bash
+        env:
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+          SESSIONS: ${{ inputs.sessions }}
+        run: |
+          CLONE_MODE="filter-blob"
+
+          case "$SOURCE_BRANCH" in
+            "ImmortalWrt / master")
+              SOURCE_NAME="immortalwrt"
+              REPOSITORY="https://github.com/immortalwrt/immortalwrt.git"
+              BRANCH="master"
+              ;;
+            "ImmortalWrt / openwrt-25.12")
+              SOURCE_NAME="immortalwrt"
+              REPOSITORY="https://github.com/immortalwrt/immortalwrt.git"
+              BRANCH="openwrt-25.12"
+              ;;
+            "ImmortalWrt / openwrt-24.10")
+              SOURCE_NAME="immortalwrt"
+              REPOSITORY="https://github.com/immortalwrt/immortalwrt.git"
+              BRANCH="openwrt-24.10"
+              ;;
+            "ImmortalWrt / openwrt-23.05")
+              SOURCE_NAME="immortalwrt"
+              REPOSITORY="https://github.com/immortalwrt/immortalwrt.git"
+              BRANCH="openwrt-23.05"
+              ;;
+            "ImmortalWrt / openwrt-21.02")
+              SOURCE_NAME="immortalwrt"
+              REPOSITORY="https://github.com/immortalwrt/immortalwrt.git"
+              BRANCH="openwrt-21.02"
+              ;;
+            "ImmortalWrt / openwrt-18.06-k5.4")
+              SOURCE_NAME="immortalwrt"
+              REPOSITORY="https://github.com/immortalwrt/immortalwrt.git"
+              BRANCH="openwrt-18.06-k5.4"
+              ;;
+            "ImmortalWrt / openwrt-18.06")
+              SOURCE_NAME="immortalwrt"
+              REPOSITORY="https://github.com/immortalwrt/immortalwrt.git"
+              BRANCH="openwrt-18.06"
+              ;;
+            "ImmortalWrt MT798x (hanwckf) / openwrt-21.02")
+              SOURCE_NAME="immortalwrt-mt798x"
+              REPOSITORY="https://github.com/hanwckf/immortalwrt-mt798x.git"
+              BRANCH="openwrt-21.02"
+              CLONE_MODE="depth1"
+              ;;
+            "OpenWrt / main")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="main"
+              ;;
+            "OpenWrt / master")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="master"
+              ;;
+            "OpenWrt / openwrt-25.12")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="openwrt-25.12"
+              ;;
+            "OpenWrt / openwrt-24.10")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="openwrt-24.10"
+              ;;
+            "OpenWrt / openwrt-23.05")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="openwrt-23.05"
+              ;;
+            "OpenWrt / openwrt-22.03")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="openwrt-22.03"
+              ;;
+            "OpenWrt / openwrt-21.02")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="openwrt-21.02"
+              ;;
+            "OpenWrt / openwrt-19.07")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="openwrt-19.07"
+              ;;
+            "OpenWrt / openwrt-18.06")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="openwrt-18.06"
+              ;;
+            "OpenWrt / lede-17.01")
+              SOURCE_NAME="openwrt"
+              REPOSITORY="https://github.com/openwrt/openwrt.git"
+              BRANCH="lede-17.01"
+              ;;
+            "LEDE / master")
+              SOURCE_NAME="lede"
+              REPOSITORY="https://github.com/coolsnowwolf/lede.git"
+              BRANCH="master"
+              ;;
+            *)
+              echo "::error::不支持的源码 / 分支组合：$SOURCE_BRANCH"
+              exit 1
+              ;;
+          esac
+
+          if ! [[ "$SESSIONS" =~ ^([1-9]|1[0-6])$ ]]; then
+            echo "::error::SSH 后台数量只能是 1～16"
+            exit 1
+          fi
+
+          SESSION_LIST="$(seq -s, 1 "$SESSIONS")"
+          MATRIX="{\"session\":[$SESSION_LIST]}"
+
+          echo "source_name=$SOURCE_NAME" >> "$GITHUB_OUTPUT"
+          echo "repository=$REPOSITORY" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "clone_mode=$CLONE_MODE" >> "$GITHUB_OUTPUT"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+          echo "源码：$SOURCE_NAME"
+          echo "仓库：$REPOSITORY"
+          echo "分支：$BRANCH"
+          echo "克隆模式：$CLONE_MODE"
+          echo "统一源码目录：source"
+          echo "SSH 后台数量：$SESSIONS"
+
+  menuconfig:
+    name: "${{ inputs.config_file || '新建配置' }}｜${{ needs.prepare.outputs.source_name }}-${{ needs.prepare.outputs.branch }} SSH ${{ matrix.session }}"
+    needs: prepare
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+
+    env:
+      SOURCE_NAME: ${{ needs.prepare.outputs.source_name }}
+      SOURCE_REPOSITORY: ${{ needs.prepare.outputs.repository }}
+      SOURCE_BRANCH: ${{ needs.prepare.outputs.branch }}
+      CLONE_MODE: ${{ needs.prepare.outputs.clone_mode }}
+      SESSION_ID: ${{ matrix.session }}
+      CONFIG_FILE: ${{ inputs.config_file }}
+      BUILD_FIRMWARE: ${{ inputs.build_firmware }}
+
+    steps:
+      - name: 检出配置仓库
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: 安装 menuconfig 依赖
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bzip2 clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git \
+            libncurses-dev libssl-dev zlib1g-dev \
+            python3 python3-setuptools rsync subversion swig \
+            unzip file wget curl ca-certificates perl patch \
+            xz-utils screen cpio device-tree-compiler libelf-dev             libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev             libmpfr-dev libncursesw5-dev libreadline-dev libtool             ninja-build p7zip-full pkgconf python3-pip python3-ply             python3-docutils qemu-utils re2c scons squashfs-tools             texinfo xmlto xxd
+
+      - name: 在 Actions 内下载源码并安装 feeds
+        shell: bash
+        run: |
+          case "$CLONE_MODE" in
+            depth1)
+              git clone \
+                --depth=1 \
+                --branch "$SOURCE_BRANCH" \
+                --single-branch \
+                "$SOURCE_REPOSITORY" \
+                "$GITHUB_WORKSPACE/source"
+              ;;
+            filter-blob)
+              git clone \
+                --branch "$SOURCE_BRANCH" \
+                --single-branch \
+                --filter=blob:none \
+                "$SOURCE_REPOSITORY" \
+                "$GITHUB_WORKSPACE/source"
+              ;;
+            *)
+              echo "::error::未知克隆模式：$CLONE_MODE"
+              exit 1
+              ;;
+          esac
+
+          cd "$GITHUB_WORKSPACE/source"
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+          if [[ "$SOURCE_NAME" == "immortalwrt-mt798x" ]]; then
+            echo "已选择 hanwckf/immortalwrt-mt798x。"
+            echo "源码自带 defconfig/，当前不会自动复制，避免覆盖用户 config/ 配置。"
+            echo "源码目录已统一为：$GITHUB_WORKSPACE/source"
+          fi
+
+          ln -sfn "$GITHUB_WORKSPACE/source" "$HOME/source"
+
+          {
+            echo "source=$SOURCE_NAME"
+            echo "repository=$SOURCE_REPOSITORY"
+            echo "branch=$SOURCE_BRANCH"
+            echo "clone_mode=$CLONE_MODE"
+            echo "source_directory=source"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "session=$SESSION_ID"
+            echo "run_id=$GITHUB_RUN_ID"
+          } > SOURCE_INFO.txt
+
+      - name: 可选读取已有 .config
+        shell: bash
+        run: |
+          cd "$GITHUB_WORKSPACE/source"
+
+          # 清理 Run workflow 输入框前后的空白。
+          CONFIG_FILE="$(printf '%s' "$CONFIG_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+          if [[ -z "$CONFIG_FILE" ]]; then
+            {
+              echo "config_file=none"
+              echo "config_loaded=false"
+            } >> SOURCE_INFO.txt
+
+            echo "未指定已有配置，将直接启动新的 make menuconfig。"
+            exit 0
+          fi
+
+          # 只允许 config/ 根目录中的单个文件名；不限制扩展名和普通字符。
+          if [[ "$CONFIG_FILE" == *"/"* || "$CONFIG_FILE" == *"\\"* || "$CONFIG_FILE" == "." || "$CONFIG_FILE" == ".." ]]; then
+            echo "::error::只能填写 config 目录中的单个文件名，不能包含 /、\\、. 或 .. 路径。"
+            echo "正确示例：001.menuconfig-session-1.config"
+            exit 1
+          fi
+
+          CONFIG_INPUT="$CONFIG_FILE"
+          CONFIG_SOURCE="$GITHUB_WORKSPACE/config/$CONFIG_INPUT"
+          CONFIG_RESOLVED="$CONFIG_INPUT"
+
+          if [[ ! -f "$CONFIG_SOURCE" ]]; then
+            CONFIG_SOURCE_WITH_SUFFIX="$GITHUB_WORKSPACE/config/${CONFIG_INPUT}.config"
+
+            if [[ -f "$CONFIG_SOURCE_WITH_SUFFIX" ]]; then
+              CONFIG_SOURCE="$CONFIG_SOURCE_WITH_SUFFIX"
+              CONFIG_RESOLVED="${CONFIG_INPUT}.config"
+              echo "未找到精确文件名，已自动补全 .config：$CONFIG_RESOLVED"
+            else
+              echo "::error::找不到配置文件：config/$CONFIG_INPUT"
+              echo "同时也未找到：config/${CONFIG_INPUT}.config"
+              echo "仓库 config 目录中的现有文件："
+              find "$GITHUB_WORKSPACE/config" -maxdepth 1 -type f ! -name 'README.md' -printf '  %f\n' 2>/dev/null | sort || true
+              exit 1
+            fi
+          fi
+
+          if [[ ! -s "$CONFIG_SOURCE" ]]; then
+            echo "::error::配置文件为空：config/$CONFIG_RESOLVED"
+            exit 1
+          fi
+
+          cp -- "$CONFIG_SOURCE" .config
+          cp -- "$CONFIG_SOURCE" loaded-original.config
+
+          CONFIG_ORIGINAL_SHA256="$(sha256sum loaded-original.config | awk '{print $1}')"
+
+          {
+            echo "config_input=$CONFIG_INPUT"
+            echo "config_file=$CONFIG_RESOLVED"
+            echo "config_loaded=true"
+            echo "config_original_sha256=$CONFIG_ORIGINAL_SHA256"
+          } >> SOURCE_INFO.txt
+
+          echo "已读取：config/$CONFIG_RESOLVED"
+          echo "已复制到：$GITHUB_WORKSPACE/source/.config"
+          echo "原始副本：$GITHUB_WORKSPACE/source/loaded-original.config"
+          ls -lh .config loaded-original.config
+
+      - name: 创建 Screen 11 并启动 menuconfig
+        shell: bash
+        run: |
+          sudo rm -f /continue
+          rm -f "$GITHUB_WORKSPACE/continue"
+
+          cat > "$HOME/.screenrc" <<'EOF'
+          startup_message off
+          defscrollback 5000
+          hardstatus alwayslastline
+          hardstatus string ' Screen 11 | %H | %n:%t '
+          EOF
+
+          screen -dmS 11 bash -lc 'cd "$HOME/source" && make menuconfig; exec bash'
+          sleep 3
+
+          if ! screen -ls 2>/dev/null | grep -q '[.]11[[:space:]]'; then
+            echo "::error::Screen 11 创建失败"
+            exit 1
+          fi
+
+          echo "Screen 11 已创建，make menuconfig 已在其中启动。"
+          echo "SSH 登录后手动执行：screen -d -r 11"
+          screen -ls
+
+      - name: 开启受限 SSH 后台
+        id: tmate
+        uses: mxschmitt/action-tmate@v3.24
+        with:
+          detached: true
+          limit-access-to-actor: true
+          connect-timeout-seconds: 180
+
+
+
+      - name: 显示连接说明
+        shell: bash
+        run: |
+          echo "============================================================"
+          echo "SSH：${{ steps.tmate.outputs.ssh-command }}"
+          if [[ -n "$CONFIG_FILE" ]]; then
+            echo "初始配置：config/$CONFIG_FILE"
+          else
+            echo "初始配置：未读取已有配置"
+          fi
+          echo "登录后执行：screen -d -r 11"
+          echo "保存 .config 后执行：sudo touch /continue"
+          echo "完成标记每 5 秒检查一次；等待状态每 600 秒输出一次。"
+          echo "============================================================"
+
+      - name: 等待用户完成（每 5 秒检查，600 秒提示）
+        shell: bash
+        run: |
+          echo "开始等待用户完成配置……"
+          echo "完成后执行：sudo touch /continue"
+          echo "完成标记每 5 秒检查一次；等待状态每 600 秒输出一次。"
+
+          last_report=$SECONDS
+
+          while true; do
+            if [ -f /continue ] || [ -f "$GITHUB_WORKSPACE/continue" ]; then
+              echo "检测到完成标记：$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              break
+            fi
+
+            if (( SECONDS - last_report >= 600 )); then
+              echo "仍在等待：$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              last_report=$SECONDS
+            fi
+
+            sleep 5
+          done
+
+      - name: 检查并整理 .config
+        shell: bash
+        run: |
+          cd "$GITHUB_WORKSPACE/source"
+
+          if [ ! -s .config ]; then
+            echo "::error::没有找到有效的 .config。请保存 .config 后再执行 sudo touch /continue。"
+            exit 1
+          fi
+
+          cp .config "menuconfig-session-${SESSION_ID}.config"
+          FINAL_SHA256="$(sha256sum .config | awk '{print $1}')"
+          echo "config_sha256=$FINAL_SHA256" >> SOURCE_INFO.txt
+          echo "build_requested=$BUILD_FIRMWARE" >> SOURCE_INFO.txt
+
+          if [ -s loaded-original.config ]; then
+            ORIGINAL_SHA256="$(sha256sum loaded-original.config | awk '{print $1}')"
+            if [ "$FINAL_SHA256" = "$ORIGINAL_SHA256" ]; then
+              echo "config_changed=false" >> SOURCE_INFO.txt
+            else
+              echo "config_changed=true" >> SOURCE_INFO.txt
+            fi
+          else
+            echo "config_changed=unknown" >> SOURCE_INFO.txt
+          fi
+
+          ls -lh \
+            .config \
+            "menuconfig-session-${SESSION_ID}.config" \
+            SOURCE_INFO.txt
+
+          if [ -s loaded-original.config ]; then
+            ls -lh loaded-original.config
+          fi
+
+      - name: 上传 .config
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ needs.prepare.outputs.source_name }}-${{ needs.prepare.outputs.branch }}-config-${{ github.run_number }}-${{ matrix.session }}
+          path: |
+            source/.config
+            source/menuconfig-session-${{ matrix.session }}.config
+            source/loaded-original.config
+            source/SOURCE_INFO.txt
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 9
+
+      - name: 跳过固件编译
+        if: ${{ inputs.build_firmware == false }}
+        shell: bash
+        run: |
+          echo "已取消固件编译。"
+          echo ".config Artifact 已上传，Job 到此正常结束。"
+
+      - name: 编译固件
+        id: build
+        if: ${{ inputs.build_firmware == true }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd "$GITHUB_WORKSPACE/source"
+
+          CPU_COUNT="$(nproc)"
+          BUILD_JOBS="$CPU_COUNT"
+          STARTED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+          {
+            echo "build_requested=true"
+            echo "cpu_count=$CPU_COUNT"
+            echo "build_jobs=$BUILD_JOBS"
+            echo 'primary_command=make -j$(nproc)'
+            echo "started_at=$STARTED_AT"
+            echo
+            echo "===== nproc ====="
+            nproc
+            echo
+            echo "===== free -h ====="
+            free -h
+            echo
+            echo "===== df -h ====="
+            df -h
+          } > BUILD_INFO.txt
+
+          echo '开始并行编译：make -j$(nproc)'
+          set +e
+          make -j"$(nproc)" 2>&1 | tee build.log
+          PRIMARY_EXIT_CODE="${PIPESTATUS[0]}"
+          set -e
+
+          SERIAL_RETRY=false
+          SERIAL_EXIT_CODE=not_run
+          BUILD_STATUS=success
+
+          if [ "$PRIMARY_EXIT_CODE" -ne 0 ]; then
+            SERIAL_RETRY=true
+            echo "并行编译失败，开始单线程详细重试：make -j1 V=s"
+
+            set +e
+            make -j1 V=s 2>&1 | tee build-verbose.log
+            SERIAL_EXIT_CODE="${PIPESTATUS[0]}"
+            set -e
+
+            if [ "$SERIAL_EXIT_CODE" -ne 0 ]; then
+              BUILD_STATUS=failed
+            fi
+          fi
+
+          FINISHED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+          {
+            echo "primary_exit_code=$PRIMARY_EXIT_CODE"
+            echo "serial_retry=$SERIAL_RETRY"
+            echo "serial_retry_command=make -j1 V=s"
+            echo "serial_retry_exit_code=$SERIAL_EXIT_CODE"
+            echo "build_status=$BUILD_STATUS"
+            echo "finished_at=$FINISHED_AT"
+          } >> BUILD_INFO.txt
+
+          {
+            echo "build_cpu_count=$CPU_COUNT"
+            echo "build_jobs=$BUILD_JOBS"
+            echo "build_primary_exit_code=$PRIMARY_EXIT_CODE"
+            echo "build_serial_retry=$SERIAL_RETRY"
+            echo "build_serial_exit_code=$SERIAL_EXIT_CODE"
+            echo "build_status=$BUILD_STATUS"
+          } >> SOURCE_INFO.txt
+
+          echo "============================================================"
+          cat BUILD_INFO.txt
+          echo "============================================================"
+
+          if [ "$BUILD_STATUS" != "success" ]; then
+            echo "::error::固件编译失败。配置 Artifact 已在编译前上传，请下载编译日志排查。"
+            exit 1
+          fi
+
+          echo "固件编译完成。"
+          find bin/targets -maxdepth 4 -type f -printf '%p  %s bytes\n' 2>/dev/null | sort || true
+
+      - name: 上传固件和编译日志
+        if: ${{ always() && inputs.build_firmware == true }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ needs.prepare.outputs.source_name }}-${{ needs.prepare.outputs.branch }}-build-${{ github.run_number }}-${{ matrix.session }}
+          path: |
+            source/bin/targets/**
+            source/BUILD_INFO.txt
+            source/build.log
+            source/build-verbose.log
+            source/.config
+            source/SOURCE_INFO.txt
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6
+
+      - name: 检查编译结果
+        if: ${{ always() && inputs.build_firmware == true }}
+        shell: bash
+        run: |
+          if [[ "${{ steps.build.outcome }}" != "success" ]]; then
+            echo "::error::固件编译未成功。请下载 build Artifact 中的 BUILD_INFO.txt、build.log 和 build-verbose.log。"
+            exit 1
+          fi
+
+          echo "固件编译和 Artifact 上传均已完成。"
