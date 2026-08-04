@@ -322,3 +322,7 @@ make -j"$(nproc)"
 8. 资料和日志统一进入 `-build-info`。
 9. 动态上传失败后仍要上传 `ARTIFACT_INDEX.txt`，最后恢复 Job 失败状态。
 10. `@actions/artifact` 固定为 6.2.2，不要使用浮动版本。
+
+## v20 SSH 数量规则
+
+必须保持：sessions 为 `1`～`5`，默认 `2`，`max-parallel: 5`。用户已取消独立 Worker Workflow 方案。

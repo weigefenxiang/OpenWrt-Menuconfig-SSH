@@ -44,9 +44,9 @@ on:
         type: boolean
 
       sessions:
-        description: "SSH 后台数量（默认 4，最高 16）"
+        description: "SSH 后台数量（默认 2，最高 5）"
         required: true
-        default: "4"
+        default: "2"
         type: choice
         options:
           - "1"
@@ -54,17 +54,6 @@ on:
           - "3"
           - "4"
           - "5"
-          - "6"
-          - "7"
-          - "8"
-          - "9"
-          - "10"
-          - "11"
-          - "12"
-          - "13"
-          - "14"
-          - "15"
-          - "16"
 
 permissions:
   contents: read
@@ -222,7 +211,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 5
       matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
 
     env:

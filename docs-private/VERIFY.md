@@ -1,4 +1,4 @@
-# v19 验收清单
+# v20 验收清单
 
 ## 静态检查
 
@@ -231,3 +231,11 @@
 - [x] 模拟固件扫描和命名通过
 - [ ] 真实 Actions：逐个 Artifact 上传成功
 - [ ] 真实 Actions：下载项名称与配置对应
+
+## v20 验收
+
+- [x] sessions 默认值为 2
+- [x] sessions 选项仅为 1～5
+- [x] max-parallel 为 5
+- [x] 未新增独立 Worker Workflow
+- [x] v19 其他功能未改变
